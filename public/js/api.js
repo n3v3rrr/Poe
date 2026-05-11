@@ -38,53 +38,86 @@ export function categoryToEndpoints(s){
   return ["currency"];
 }
 
-export async function fetchOneEndpoint(ep, s, realm = DEFAULT_REALM) {
-  let page = 1; 
-  const out = [];
-  const league = encodeURIComponent(s.league);
-  const referenceCurrency = encodeURIComponent(s.ref || 'exalted');
+// api.js — замените ВСЮ функцию fetchOneEndpoint на эту:
 
-  while (true) {
-    // ✅ Убираем category параметр - API возвращает всё категории
-    const params = new URLSearchParams({
-      referenceCurrency: referenceCurrency,
-      page: page.toString(),
-      perPage: s.perPage.toString()
-    });
-    
-    const url = `${API_BASE}/${realm}/Leagues/${league}/Items?${params}`;
+/**
+ * Универсальный фетчер с правильной маршрутизацией эндпоинтов
+ */
+// api.js — полная замена fetchOneEndpoint
+
+export async function fetchOneEndpoint(endpointKey, s, realm = DEFAULT_REALM) {
+  const league = encodeURIComponent(s.league || DEFAULT_LEAGUE);
+  const ref = encodeURIComponent(s.ref || 'exalted');
+  const perPage = s.perPage || 25;
+
+  // 🔥 СПЕЦИАЛЬНЫЙ СЛУЧАЙ: загрузка списка лиг
+  if (endpointKey === 'Leagues' || endpointKey === 'leagues') {
+    const url = `${API_BASE}/${realm}/Leagues`;
     console.log(`🔄 Fetching: ${url}`);
-    
-    try {
-      const res = await fetch(url, {
-        headers: { 
-          'Accept': 'application/json',
-          'User-Agent': 'poe2-quickflip/1.0'
-        }
-      });
-      
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      }
-      
-      const data = await res.json();
-      console.log(`📦 Page ${page}: ${data.Items?.length || 0} items`);
-      
-      const list = (data && Array.isArray(data.Items)) ? data.Items : [];
-      out.push(...list);
-      
-      if (list.length < s.perPage || page >= (data.Pages || 1)) break;
-      page++;
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-    } catch (error) {
-      console.error(`❌ Error fetching ${ep}:`, error);
-      throw error;
+    const res = await fetch(url, { 
+      headers: { 
+        'Accept': 'application/json',
+        'User-Agent': 'poe2-quickflip/1.0 (your_email@example.com)'
+      } 
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const data = await res.json();
+    return data.map(l => ({ value: l.Value, isCurrent: l.IsCurrent }));
+  }
+
+  // 🔥 Категории для эндпоинта /Currencies/ByCategory
+  const currencyCats = [
+    'currency', 'fragments', 'runes', 'talismans', 'essences',
+    'ultimatum', 'expedition', 'ritual', 'omen', 'vaultkeys',
+    'breach', 'abyss', 'uncutgems', 'lineagesupportgems', 'delirium'
+  ];
+
+  let url;
+  if (currencyCats.includes(endpointKey)) {
+    // ✅ ПРАВИЛЬНЫЕ имена параметров (PascalCase!)
+    const params = new URLSearchParams({
+      Category: endpointKey,              // ← ЗАГЛАВНАЯ C
+      ReferenceCurrency: ref,             // ← PascalCase
+      Page: '1',                          // ← PascalCase
+      PerPage: String(perPage)            // ← PascalCase
+    });
+    url = `${API_BASE}/${realm}/Leagues/${league}/Currencies/ByCategory?${params}`;
+  } 
+  else if (endpointKey === 'uniques' || endpointKey.startsWith('unique:')) {
+    const params = new URLSearchParams({
+      ReferenceCurrency: ref,
+      Page: '1',
+      PerPage: String(perPage)
+    });
+    if (endpointKey.startsWith('unique:')) {
+      params.append('Category', endpointKey.split(':')[1]); // ← ЗАГЛАВНАЯ
     }
+    url = `${API_BASE}/${realm}/Leagues/${league}/Uniques/ByCategory?${params}`;
+  }
+  else {
+    // 🔥 FALLBACK: /Items — БЕЗ параметров пагинации!
+    url = `${API_BASE}/${realm}/Leagues/${league}/Items`;
+  }
+
+  console.log(`🔄 Fetching: ${url}`);
+  
+  const res = await fetch(url, { 
+    headers: { 
+      'Accept': 'application/json',
+      'User-Agent': 'poe2-quickflip/1.0 (your_email@example.com)'
+    } 
+  });
+  
+  if (!res.ok) {
+    const errText = await res.text().catch(() => 'No body');
+    console.error(`❌ HTTP ${res.status}: ${errText.substring(0, 200)}`);
+    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
   }
   
-  console.log(`✅ Total items: ${out.length}`);
-  return out;
+  const data = await res.json();
+  const items = Array.isArray(data) ? data : (data.Items || data.items || []);
+  console.log(`✅ Received ${items.length} items from ${endpointKey}`);
+  return items;
 }
 
 export async function fetchPairHistory(leagueName, currencyOneId, currencyTwoId, limit = 300) {

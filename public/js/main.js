@@ -6,16 +6,39 @@ import { API_BASE, PAIR_IDS } from './constants.js';
 
 let items=[]; // aggregated items
 
-async function initLeagues(){
-  try{
-    const list = await fetchLeagues();
-    populateLeagues(list);
-    // After populating, we should fetch data for the selected league
-    fetchAllPages();
-  }catch(e){
-    console.error("Fetch leagues failed", e);
-    // Fallback: continue with default hardcoded value or empty
-    fetchAllPages();
+// main.js
+export async function initLeagues() {
+  try {
+    console.log('🔄 Loading leagues...');
+    
+    // ✅ 1. Используем ПРАВИЛЬНУЮ функцию для загрузки лиг
+    const leagues = await fetchLeagues();
+    
+    // ✅ 2. Фильтруем по isCurrent (с маленькой буквы — как возвращает api.js)
+    const currentLeagues = leagues.filter(l => l.isCurrent);
+    console.log(`✅ Loaded ${leagues.length} leagues (${currentLeagues.length} active)`);
+
+    // ✅ 3. Обновляем UI — вызываем экспортированную функцию напрямую
+    if (typeof populateLeagues === 'function') {
+      populateLeagues(leagues);
+    }
+
+    // ✅ 4. Загружаем данные для первой доступной лиги
+    if (leagues.length > 0) {
+      const s = getState();
+      // Берём первую активную, или любую, если активных нет
+      s.league = currentLeagues[0]?.value || leagues[0].value;
+      console.log(`🎯 Selected league: ${s.league}`);
+      
+      // ✅ 5. Загружаем данные — fetchAllPages читает состояние из getState()
+      await fetchAllPages();
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to init leagues:', error);
+    if (typeof showError === 'function') {
+      showError('Не удалось загрузить лиги. Проверьте подключение.');
+    }
   }
 }
 
