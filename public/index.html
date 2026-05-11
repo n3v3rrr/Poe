@@ -169,10 +169,27 @@
 
     <!-- Таблица -->
     <div class="card" style="margin-top:12px">
-      <div style="overflow:auto">
-        <table id="tbl">
-          <thead>
-            <th>🔴 Красный: ROI < 5%</th><th>🟡 Жёлтый: BlockGap > 25%</th><th>🟢 Зелёный: ROI > 15% + ликвидность</th>
+      <div style="overflow:auto"><table id="tbl">
+        <thead>
+          <th>🔴 Красный: ROI < 5%</th>
+          <th>🟡 Жёлтый: BlockGap > 25%</th>
+          <th>🟢 Зелёный: ROI > 15% + ликвидность</th>
+          <div class="row">
+            <div style="min-width:260px">
+              <div class="muted">P10 
+                Самые низкие 10% цен
+                Покупать здесь = очень выгодно, но ордеров мало</div>
+              <div class="muted">P25 
+                Нижняя граница "нормальных" цен
+                Рекомендуемая цена покупки — баланс выгоды и ликвидности</div>
+              <div class="muted">P50 
+                Медиана, средняя рыночная цена
+                Ориентир "честной" стоимости, точка безубыточности</div>
+              <div class="muted">P75 
+                Верхняя граница, дорогие ордера
+                Целевая цена продажи — здесь можно быстро продать</div>
+        </div>
+        
             <tr>
               
               <th>Предмет</th><th>API ID</th><th>Последняя (Ex)</th>
