@@ -44,3 +44,8 @@ abbr[title]{
   text-underline-offset: 2px;
   cursor: help;
 }
+.hl-bad {
+  background: rgba(239, 68, 68, 0.25) !important;
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.5);
+}
+

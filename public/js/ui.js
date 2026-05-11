@@ -176,32 +176,53 @@ export function render(items, fetchCallback){
     
     if(!rows.length){ tb.innerHTML='<tr><td colspan="14" class="muted">Нет данных (проверьте прокси или фильтры)</td></tr>'; return; }
     for(const o of rows){
-      const roiOk=(s.divineRate!=null && o.ROI!=null && (o.ROI*100) >= s.hlRoi);
-      const nearBuy=(s.hlBuyZone && o.current!=null && o.buy!=null && o.current <= (o.buy*1.01));
+    const roiOk = (s.divineRate != null && o.ROI != null && (o.ROI * 100) >= s.hlRoi);
+    const nearBuy = (s.hlBuyZone && o.current != null && o.buy != null && o.current <= (o.buy * 1.01));
 
-      const tr=document.createElement("tr");
-      if(roiOk) tr.classList.add("hl"); else if(nearBuy) tr.classList.add("hl-warn");
-      const badges=[ roiOk? `<span class="badge badge-go">ROI≥${(s.hlRoi|0)}%</span>`:"", nearBuy? '<span class="badge badge-buy">Возле покупки</span>':"" ].filter(Boolean).join("");
+    const tr = document.createElement("tr");
 
-      tr.innerHTML = `
-        <td>${o.name} ${badges}</td>
-        <td class="muted">${o.apiId ?? "-"}</td>
-        <td>${fmt(o.current)}</td>
-        <td class="buy">${fmt(o.buy)}</td>
-        <td class="sell">${fmt(o.sell)}</td>
-        <td>${fmt(o.p10)}</td>
-        <td>${fmt(o.p25)}</td>
-        <td>${fmt(o.p50)}</td>
-        <td>${fmt(o.p75)}</td>
-        <td>${Math.round(o.avgQty).toLocaleString()}</td>
-        <td>${o.B ?? "-"}</td>
-        <td>${o.S ?? "-"}</td>
-        <td>${o.ROI!=null? fmt(o.ROI*100,2): "-"}</td>
-        <td>${(o.bgB!=null? fmt(o.bgB,1):"-")} / ${ (o.bgS!=null? fmt(o.bgS,1):"-") }%</td>
-      `;
-      tr.addEventListener("click", () => showSelectedItem(o, tr));
-      tb.appendChild(tr);
+    // 🔽 НОВАЯ ЛОГИКА ПОДСВЕТКИ (без повторного объявления tr)
+    const roiVal = o.ROI != null ? o.ROI * 100 : -1;
+    const bgBVal = o.bgB != null ? o.bgB : 100;
+    const bgSVal = o.bgS != null ? o.bgS : 100;
+
+    if (roiVal < 5 && o.ROI != null) {
+      tr.classList.add("hl-bad"); // 🔴 Красный: ROI < 5%
+    } else if (bgBVal > 25 || bgSVal > 25) {
+      tr.classList.add("hl-warn"); // 🟡 Жёлтый: BlockGap > 25%
+    } else if (roiVal >= 15 && bgBVal <= 15 && bgSVal <= 15) {
+      tr.classList.add("hl"); // 🟢 Зелёный: ROI > 15% + ликвидность
+    } else if (roiOk) {
+      tr.classList.add("hl"); // Ваша старая логика
+    } else if (nearBuy) {
+      tr.classList.add("hl-warn"); // Ваша старая логика
     }
+    // 🔼 КОНЕЦ НОВОЙ ЛОГИКИ
+
+    const badges = [
+      roiOk ? `<span class="badge badge-go">ROI≥${(s.hlRoi | 0)}%</span>` : "",
+      nearBuy ? '<span class="badge badge-buy">Возле покупки</span>' : ""
+    ].filter(Boolean).join("");
+
+    tr.innerHTML = `
+     <td>${o.name} ${badges}</td>
+     <td class="muted">${o.apiId ?? "-"}</td>
+     <td>${fmt(o.current)}</td>
+     <td class="buy">${fmt(o.buy)}</td>
+     <td class="sell">${fmt(o.sell)}</td>
+     <td>${fmt(o.p10)}</td>
+     <td>${fmt(o.p25)}</td>
+     <td>${fmt(o.p50)}</td>
+     <td>${fmt(o.p75)}</td>
+     <td>${Math.round(o.avgQty).toLocaleString()}</td>
+     <td>${o.B ?? "-"}</td>
+     <td>${o.S ?? "-"}</td>
+     <td>${o.ROI != null ? fmt(o.ROI * 100, 2) : "-"}</td>
+     <td>${(o.bgB != null ? fmt(o.bgB, 1) : "-")} / ${(o.bgS != null ? fmt(o.bgS, 1) : "-")}%</td>
+  `;
+    tr.addEventListener("click", () => showSelectedItem(o, tr));
+    tb.appendChild(tr);
+  }
 }
 
 export function buildCatPicker(fetchCallback){

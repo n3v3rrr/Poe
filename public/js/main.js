@@ -81,21 +81,85 @@ async function fetchAllPages(){
   console.log('Total items:', items.length, 'first item:', items[0]);
   render(items, fetchAllPages);
 }
+async function autoDivine() {
+  const s = getState();
+  const league = encodeURIComponent($("#league").value);
+  const ref = s.ref || "exalted";
+  const realm = "poe2"; // ✅ Важно: poe2, а не pc
 
-async function autoDivine(){
-    const s=getState(); $("#refLabel").textContent=s.ref; $("#error").style.display="none";
-    try{
-      let page=1, found=null;
-      while(page<=3 && !found){
-        const url=`${API_BASE}/items/currency/currency?referenceCurrency=${encodeURIComponent(s.ref)}&page=${page}&perPage=25&league=${encodeURIComponent(s.league)}`;
-        const r=await fetch(url,{headers:{Accept:"application/json"}}); if(!r.ok) throw new Error(r.status+" "+r.statusText);
-        const data=await r.json(); const items=(data&&data.items)?data.items:[];
-        for(const it of items){ const id=(it.apiId||"").toLowerCase(); const name=(it.text||"").toLowerCase(); if(id.includes("divine")||name.includes("divine orb")){ found=Number(it.currentPrice); break; } }
-        if(items.length<25) break; page++;
+  try {
+    // ✅ Правильный URL с обязательными параметрами
+    const url = `http://localhost:8787/api/${realm}/Leagues/${league}/Currencies/ByCategory?Category=currency&ReferenceCurrency=${ref}&Page=1&PerPage=100`;
+    
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'poe-flip-dashboard/1.0 (contact: your@email.com)'
       }
-      if(found){ $("#divineRate").value=String(found); render(items, fetchAllPages); }
-      else throw new Error("ไม่พบราคา Divine ในหน้าแรก");
-    }catch(e){ $("#error").textContent="Auto Divine failed: "+(e.message||e); $("#error").style.display=""; }
+    });
+    
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 100)}`);
+    }
+    
+    const data = await res.json();
+    
+    // 🔍 Ищем Divine Orb в ответе
+    const currencies = data?.Currencies || data?.Items || data || [];
+    const divine = Array.isArray(currencies) 
+      ? currencies.find(c => 
+          (c?.ApiId?.toLowerCase?.()?.includes?.("divine")) || 
+          (c?.Text?.toLowerCase?.()?.includes?.("divine orb"))
+        )
+      : null;
+    
+    // 🔁 Альтернативный поиск, если не нашли в массиве
+    if (!divine) {
+      for (const key in data) {
+        const arr = Array.isArray(data[key]) ? data[key] : [];
+        const found = arr.find(c => 
+          c?.ApiId?.toLowerCase?.()?.includes?.("divine") || 
+          c?.Text?.toLowerCase?.()?.includes?.("divine")
+        );
+        if (found) { divine = found; break; }
+      }
+    }
+    
+    if (divine) {
+      // 💡 Извлекаем цену (поле может называться по-разному)
+      const divinePrice = divine.CurrentPrice ?? divine.currentPrice ?? divine.Price ?? divine.price ?? divine.LastPrice;
+      
+      if (divinePrice != null && divinePrice > 0) {
+        // 🎯 ЗАПИСЫВАЕМ ТОЛЬКО В divineRate
+        const rateInput = $("#divineRate");
+        if (rateInput) {
+          rateInput.value = Number(divinePrice).toFixed(3); // step="0.001" в вашем input
+          
+          // 🟢 Визуальный фидбек
+          const btn = $("#btnAutoDiv");
+          if (btn) {
+            const oldText = btn.textContent;
+            btn.textContent = "✓ Курс обновлён!";
+            btn.style.background = "#059669";
+            setTimeout(() => {
+              btn.textContent = oldText;
+              btn.style.background = "";
+            }, 2000);
+          }
+          
+          // 🔄 Пересчитать таблицу с новым курсом
+          if (typeof refreshData === "function") refreshData();
+          return;
+        }
+      }
+    }
+    
+    throw new Error("Divine Orb не найден или цена = 0");
+    
+  } catch (err) {
+    console.error("autoDivine error:", err);
+    alert(`❌ Ошибка: ${err.message}`);
+  }
 }
 
 async function autoRates(){

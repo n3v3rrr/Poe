@@ -38,12 +38,11 @@ export function categoryToEndpoints(s){
   return ["currency"];
 }
 
-// api.js — замените ВСЮ функцию fetchOneEndpoint на эту:
 
 /**
  * Универсальный фетчер с правильной маршрутизацией эндпоинтов
  */
-// api.js — полная замена fetchOneEndpoint
+
 
 export async function fetchOneEndpoint(endpointKey, s, realm = DEFAULT_REALM) {
   const league = encodeURIComponent(s.league || DEFAULT_LEAGUE);
