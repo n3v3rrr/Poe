@@ -96,6 +96,23 @@ async function autoDivine() {
         'User-Agent': 'poe-flip-dashboard/1.0 (contact: your@email.com)'
       }
     });
+
+
+  //   async function autoDivine() {
+  // const s = getState();
+  // const league = encodeURIComponent($("#league").value);
+  // const ref = s.ref || "exalted";
+  // const realm = DEFAULT_REALM; // ✅ используем константу
+
+  // try {
+  //   // ✅ Убираем localhost:8787, используем API_BASE
+  //   const url = `${API_BASE}/${realm}/Leagues/${league}/Currencies/ByCategory?Category=currency&ReferenceCurrency=${ref}&Page=1&PerPage=100`;
+    
+  //   const res = await fetch(url, {
+  //     headers: {
+  //       'User-Agent': 'poe2-quickflip/1.0 (contact: your@email.com)'
+  //     }
+  //   });
     
     if (!res.ok) {
       const errText = await res.text().catch(() => '');

@@ -1,4 +1,4 @@
-import { API_BASE, DEFAULT_REALM, CATS } from './constants.js';
+import { API_BASE, DEFAULT_REALM, DEFAULT_LEAGUE, CATS } from './constants.js';
 
 // Маппинг категорий на ID (нужно подобрать правильные ID)
 const CATEGORY_IDS = {
@@ -19,31 +19,31 @@ const CATEGORY_IDS = {
   'omen': 10 // ritual and omen share same ID?
 };
 
-export function categoryToEndpoints(s){
-  if(s.catValue === "all"){
-    if(s.includeCurrency) {
-      return CATS.currency_categories.map(c => c.apiId);
+export function categoryToEndpoints(s) {
+  if (s.catValue === "all") {
+    const eps = [];
+    if (s.includeCurrency) {
+      // ✅ ТОЛЬКО apiId, без префикса "currency:"
+      eps.push(...CATS.currency_categories.map(c => c.apiId));
     }
-    return [];
+    if (s.includeUnique) {
+      // ✅ Уникальные с префиксом "unique:"
+      eps.push(...CATS.unique_categories.map(c => `unique:${c.apiId}`));
+    }
+    return eps;
   }
   
+  // ✅ Для выбранной категории
   const [group, apiId] = s.catValue.split(":");
-  if(group === "currency"){
-    if(apiId === "ritual") {
-      return ["ritual", "omen"];
-    }
-    return [apiId];
+  if (group === "currency") {
+    return [apiId]; // Возвращаем просто apiId
   }
-  
-  return ["currency"];
+  return [s.catValue];
 }
-
 
 /**
  * Универсальный фетчер с правильной маршрутизацией эндпоинтов
  */
-
-
 export async function fetchOneEndpoint(endpointKey, s, realm = DEFAULT_REALM) {
   const league = encodeURIComponent(s.league || DEFAULT_LEAGUE);
   const ref = encodeURIComponent(s.ref || 'exalted');
@@ -64,6 +64,15 @@ export async function fetchOneEndpoint(endpointKey, s, realm = DEFAULT_REALM) {
     return data.map(l => ({ value: l.Value, isCurrent: l.IsCurrent }));
   }
 
+  // ✅ Обработка префиксов
+  let cleanKey = endpointKey;
+  let isUnique = false;
+  
+  if (endpointKey.startsWith('unique:')) {
+    cleanKey = endpointKey.split(':')[1];
+    isUnique = true;
+  }
+  
   // 🔥 Категории для эндпоинта /Currencies/ByCategory
   const currencyCats = [
     'currency', 'fragments', 'runes', 'talismans', 'essences',
@@ -72,25 +81,25 @@ export async function fetchOneEndpoint(endpointKey, s, realm = DEFAULT_REALM) {
   ];
 
   let url;
-  if (currencyCats.includes(endpointKey)) {
-    // ✅ ПРАВИЛЬНЫЕ имена параметров (PascalCase!)
+  
+  // ✅ Валюты (НЕ уникальные)
+  if (currencyCats.includes(cleanKey) && !isUnique) {
     const params = new URLSearchParams({
-      Category: endpointKey,              // ← ЗАГЛАВНАЯ C
-      ReferenceCurrency: ref,             // ← PascalCase
-      Page: '1',                          // ← PascalCase
-      PerPage: String(perPage)            // ← PascalCase
+      Category: cleanKey,              // ← ЗАГЛАВНАЯ C
+      ReferenceCurrency: ref,         // ← PascalCase
+      Page: '1',                      // ← PascalCase
+      PerPage: String(perPage)        // ← PascalCase
     });
     url = `${API_BASE}/${realm}/Leagues/${league}/Currencies/ByCategory?${params}`;
   } 
-  else if (endpointKey === 'uniques' || endpointKey.startsWith('unique:')) {
+  // ✅ Уникальные предметы
+  else if (isUnique) {
     const params = new URLSearchParams({
-      ReferenceCurrency: ref,
-      Page: '1',
-      PerPage: String(perPage)
+      Category: cleanKey,              // ← Accessories, Armour, и т.д.
+      ReferenceCurrency: ref,         // ← PascalCase
+      Page: '1',                      // ← PascalCase
+      PerPage: String(perPage)        // ← PascalCase
     });
-    if (endpointKey.startsWith('unique:')) {
-      params.append('Category', endpointKey.split(':')[1]); // ← ЗАГЛАВНАЯ
-    }
     url = `${API_BASE}/${realm}/Leagues/${league}/Uniques/ByCategory?${params}`;
   }
   else {

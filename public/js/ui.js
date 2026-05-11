@@ -225,25 +225,50 @@ export function render(items, fetchCallback){
   }
 }
 
-export function buildCatPicker(fetchCallback){
-    const panel=$("#catPanel"); panel.innerHTML="";
-    const addItem=(label,icon,val)=>{ const div=document.createElement("div"); div.className="cat-item"; div.innerHTML=`<img src="${icon}" alt=""/><span>${label}</span>`; div.addEventListener("click",()=>selectCategory(val,label,icon, fetchCallback)); panel.appendChild(div); };
-    const allIcon="";
-    addItem("Все (All)",allIcon,"all");
-    const s1=document.createElement("div"); s1.className="cat-section"; s1.textContent="Валюта"; panel.appendChild(s1);
-    CATS.currency_categories.forEach(c=> addItem(c.label,c.icon,`currency:${c.apiId}`));
-    const s2=document.createElement("div"); s2.className="cat-section"; s2.textContent="Уникальные"; panel.appendChild(s2);
-   
-    $("#catCurrent").addEventListener("click",()=>$("#catPanel").classList.toggle("open"));
-    document.addEventListener("click",(e)=>{ if(!$("#catPicker").contains(e.target)) $("#catPanel").classList.remove("open"); });
-    selectCategory("all","Все (All)",allIcon, false);
+export function buildCatPicker(fetchCallback) {
+  const panel = $("#catPanel"); panel.innerHTML = "";
+  
+  const addItem = (label, icon, val) => {
+    const div = document.createElement("div"); div.className = "cat-item";
+    div.innerHTML = `<img src="${icon}" alt=""/><span>${label}</span>`;
+    div.addEventListener("click", () => selectCategory(val, label, icon, fetchCallback));
+    panel.appendChild(div);
+  };
+
+  addItem("Все (All)", "", "all");
+  
+  const s1 = document.createElement("div"); s1.className = "cat-section"; s1.textContent = "Валюта"; panel.appendChild(s1);
+  CATS.currency_categories.forEach(c => addItem(c.label, c.icon, `currency:${c.apiId}`));
+  
+  // 👇 ДОБАВЛЕН ЦИКЛ (раньше его не было)
+  const s2 = document.createElement("div"); s2.className = "cat-section"; s2.textContent = "Уникальные"; panel.appendChild(s2);
+  CATS.unique_categories.forEach(c => addItem(c.label, c.icon, `unique:${c.apiId}`));
+
+  $("#catCurrent").addEventListener("click", () => $("#catPanel").classList.toggle("open"));
+  document.addEventListener("click", (e) => {
+    if (!$("#catPicker").contains(e.target)) $("#catPanel").classList.remove("open");
+  });
+  
+  selectCategory("all", "Все (All)", "", false);
 }
 
-function selectCategory(value,label,icon, fetchCallback){
-    $("#category").value=value; $("#catLabel").textContent=label; $("#catIcon").src=icon||""; $("#catPanel").classList.remove("open");
-    let target=300; if(value!=="all"){ const [g]=value.split(":"); target=(g==="unique")?50:300; }
-    const cur=Number($("#minAvgQty").value||0); if([0,50,300,1000].includes(cur)) $("#minAvgQty").value=String(target);
-    if(fetchCallback) fetchCallback();
+function selectCategory(value, label, icon, fetchCallback) {
+  $("#category").value = value; 
+  $("#catLabel").textContent = label; 
+  $("#catIcon").src = icon || ""; 
+  $("#catPanel").classList.remove("open");
+  
+  // Дефолтный фильтр ликвидности
+  let target = 300;
+  if (value !== "all") {
+    const [group] = value.split(":");
+    target = (group === "unique") ? 20 : 300; // Уникалы обычно реже, ставим 20
+  }
+  
+  const cur = Number($("#minAvgQty").value || 0);
+  if ([0, 20, 50, 300, 1000].includes(cur)) $("#minAvgQty").value = String(target);
+  
+  if (fetchCallback) fetchCallback();
 }
 
 export function applyTooltips(){
