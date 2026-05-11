@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PoE2 Quick-Flip Dashboard (Refactored)</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <h1 style="font-weight:700; font-size:22px">PoE2 Quick-Flip Dashboard</h1>
+      <span class="muted">BUY ≤ P25; SELL ≥ max(P50, BUY×(1+TP)) — capped at P75. + B/S แนะนำ, ROI_net, BlockGap, Order Currency, Gold/1D</span>
+    </div>
+
+    <!-- Controls -->
+    <div class="card" style="margin-top:12px">
+      <div class="row">
+        <!-- Category (icons) -->
+        <div>
+          <label>Category</label>
+          <div class="cat-picker" id="catPicker">
+            <div class="cat-current" id="catCurrent">
+              <img id="catIcon" src="" alt="" />
+              <span id="catLabel">ทั้งหมด (All)</span>
+            </div>
+            <div class="cat-panel" id="catPanel"></div>
+          </div>
+          <input type="hidden" id="category" value="all" />
+        </div>
+
+        <!-- Group toggles for All -->
+        <div>
+          <label>รวมกลุ่มเมื่อเลือก “All”</label>
+          <div class="row">
+            <label class="chip"><input type="checkbox" id="inclCurrency" checked /> Currency</label>
+            <label class="chip"><input type="checkbox" id="inclUnique" checked /> Unique</label>
+          </div>
+        </div>
+
+        <div>
+          <label>League</label>
+          <select id="league" style="width:260px">
+            <option value="Rise of the Abyssal">Rise of the Abyssal</option>
+          </select>
+        </div>
+        <div>
+          <label>Reference</label>
+          <select id="ref">
+            <option value="exalted">exalted</option>
+            <option value="chaos">chaos</option>
+            <option value="divine">divine</option>
+          </select>
+        </div>
+        <div>
+          <label>Per Page</label>
+          <input type="number" id="perPage" value="25" style="width:100px" />
+        </div>
+        <div>
+          <label>TP %</label>
+          <input type="number" id="tpPct" value="3" style="width:100px" />
+        </div>
+        <div>
+          <label>Min AvgQty</label>
+          <input type="number" id="minAvgQty" value="300" style="width:100px" />
+        </div>
+
+        <!-- Highlights -->
+        <div>
+          <label>HL ROI ≥ %</label>
+          <input type="number" id="hlRoi" value="12" style="width:100px" />
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:18px">
+          <input type="checkbox" id="hlBuyZone" checked />
+          <label for="hlBuyZone" style="margin:0">HL near BUY zone</label>
+        </div>
+
+        <!-- pcs/D filters -->
+        <div>
+          <label>Max S (pcs/D)</label>
+          <input type="number" id="maxS" value="24" style="width:100px" />
+        </div>
+        <div>
+          <label>Max B (pcs/D)</label>
+          <input type="number" id="maxB" value="40" style="width:100px" />
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:18px">
+          <input type="checkbox" id="hideNoBS" checked />
+          <label for="hideNoBS" style="margin:0">ซ่อนรายการที่ยังคำนวณ B/S ไม่ได้</label>
+        </div>
+
+        <button class="primary" id="btnRefresh">Refresh</button>
+        <button class="secondary" id="btnCsv">Download CSV</button>
+      </div>
+      <p id="error" class="error" style="margin-top:8px; display:none"></p>
+    </div>
+
+    <!-- Rate Settings & Order Currency -->
+    <div class="card" style="margin-top:12px">
+      <div class="row">
+        <div style="min-width:260px">
+          <div class="muted">Rate Settings (Divine & Fees)</div>
+          <div class="muted">Divine rate & Fees used for B/S & ROI calculations</div>
+        </div>
+        <div>
+          <label>Fee buy %</label>
+          <input id="feeBuy" type="number" value="1.0" style="width:100px" />
+        </div>
+        <div>
+          <label>Fee sell %</label>
+          <input id="feeSell" type="number" value="1.0" style="width:100px" />
+        </div>
+        <div class="row">
+          <button id="btnAutoDiv" class="secondary">Auto 1D in <span id="refLabel">exalted</span></button>
+          <input id="divineRate" type="number" step="0.001" placeholder="or enter 1 Divine in ref" style="width:200px" />
+        </div>
+      </div>
+
+      <!-- Order currency settings -->
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label>Buy in (order currency)</label>
+          <select id="buyCur">
+            <option value="exalted">exalted</option>
+            <option value="chaos">chaos</option>
+            <option value="divine">divine</option>
+          </select>
+        </div>
+        <div>
+          <label>Sell in (order currency)</label>
+          <select id="sellCur">
+            <option value="divine">divine</option>
+            <option value="exalted">exalted</option>
+            <option value="chaos">chaos</option>
+          </select>
+        </div>
+        <div>
+          <label>Gold per unit (Ex/Chaos/Divine)</label>
+          <div class="row">
+            <input id="goldEx" type="number" value="120" style="width:90px" />
+            <input id="goldChaos" type="number" value="160" style="width:90px" />
+            <input id="goldDiv" type="number" value="800" style="width:90px" />
+          </div>
+        </div>
+        <div>
+          <label>Rates (per 1 Divine)</label>
+          <div class="row">
+            <button id="btnAutoRates" class="secondary">Auto Ex/Chaos per 1D</button>
+            <!-- <button id="btnAutoRatesPH" class="secondary">Smart Auto Rates (PairHistory)</button> -->
+            <input id="exPerDiv" type="number" step="0.001" placeholder="Ex/1D" style="width:120px" />
+            <input id="chaosPerDiv" type="number" step="0.001" placeholder="Chaos/1D" style="width:120px" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Selected item summary (auto-populate when clicking a table row) -->
+<div id="selWrap" class="row" style="margin-top:8px; display:none">
+  <div class="card" style="flex:1">
+    <div class="muted">Selected Item</div>
+    <div id="selName" style="font-weight:700"></div>
+    <div class="muted" id="selApi" style="margin-top:2px"></div>
+    <div id="selStats" style="margin-top:8px"></div>
+  </div>
+</div>
+      <div class="row"  style="margin-top:8px">
+        <div id="orderCostOut1"  ></div>
+        <div id="orderCostOut"  ></div>
+      </div>
+
+    </div>
+
+    <!-- Table -->
+    <div class="card" style="margin-top:12px">
+      <div style="overflow:auto">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>Item</th><th>API ID</th><th>Last (Ex)</th>
+              <th class="buy">BUY ≤ (Ex)</th><th class="sell">SELL ≥ (Ex)</th>
+              <th>P10</th><th>P25</th><th>P50</th><th>P75</th><th>Avg Qty</th>
+              <th>B (pcs/D)</th><th>S (pcs/D)</th><th>ROI_net %</th><th>BlockGap (B/S)</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="14" class="muted">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "poe2-quickflip-vscode",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "express": "^4.21.2",
+    "http-proxy-middleware": "^3.0.5",
+    "morgan": "^1.10.1",
+    "node-fetch": "^3.3.2"
+  },
+  "scripts": {
+    "proxy": "node proxy.cjs"
+  },
+  "description": "PoE2 Quick‑Flip Dashboard — VSCode + Live Server",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {}
+}
