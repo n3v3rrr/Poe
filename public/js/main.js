@@ -20,17 +20,43 @@ async function initLeagues(){
 }
 
 async function fetchAllPages(){
-    const s=getState(); $("#error").style.display="none"; $("#tbody").innerHTML='<tr><td colspan="14" class="muted">Loading…</td></tr>';
-    const endpoints=categoryToEndpoints(s); if(!endpoints.length){ $("#tbody").innerHTML='<tr><td colspan="14" class="muted">No category</td></tr>'; return; }
-    const aggregated=[]; let any=false, lastErr=null;
-    for(const ep of endpoints){
-      try{ const part=await fetchOneEndpoint(ep,s); aggregated.push(...part); any=true; }catch(e){ lastErr=e; }
+  const s=getState(); 
+  $("#error").style.display="none"; 
+  $("#tbody").innerHTML='<tr><td colspan="14" class="muted">Loading…</td></tr>';
+  const endpoints=categoryToEndpoints(s); 
+  if(!endpoints.length){ 
+    $("#tbody").innerHTML='<tr><td colspan="14" class="muted">No category</td></tr>'; 
+    return; 
+  }
+  
+  const aggregated=[]; 
+  let any=false, lastErr=null;
+  
+  for(const ep of endpoints){
+    try{ 
+      const part = await fetchOneEndpoint(ep,s);
+      console.log(`✅ Endpoint ${ep}: получено ${part.length} предметов`, part[0]); // ✅ Лог
+      aggregated.push(...part); 
+      any=true; 
+    } catch(e){ 
+      console.error(`❌ Ошибка ${ep}:`, e);
+      lastErr=e; 
     }
-    if(!any){ $("#error").textContent="Error: "+(lastErr?.message||lastErr||"fetch failed"); $("#error").style.display=""; $("#tbody").innerHTML='<tr><td colspan="14" class="muted">No data</td></tr>'; items=[]; return; }
-    items=aggregated;
-    render(items, fetchAllPages);
-    items = aggregated;
-console.log('Total items:', items.length, 'first item:', items[0]);
+  }
+  
+  console.log(`📊 Всего предметов после агрегации: ${aggregated.length}`); // ✅ Лог
+  
+  if(!any){ 
+    $("#error").textContent="Error: "+(lastErr?.message||lastErr||"fetch failed"); 
+    $("#error").style.display=""; 
+    $("#tbody").innerHTML='<tr><td colspan="14" class="muted">No data</td></tr>'; 
+    items=[]; 
+    return; 
+  }
+  
+  items = aggregated;
+  console.log('Total items:', items.length, 'first item:', items[0]);
+  render(items, fetchAllPages);
 }
 
 async function autoDivine(){
